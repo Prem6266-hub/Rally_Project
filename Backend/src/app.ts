@@ -6,6 +6,8 @@ import decisionRoutes from "./routes/decision.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import cookieParser from "cookie-parser";
 import inviteRoutes from "./routes/invitation.routes.js";
+import taskRoutes from "./routes/task.routes.js";
+import messageRoutes from "./routes/message.routes.js";
 
 const app = express();
 
@@ -23,10 +25,12 @@ app.use(express.json());
 
 
 //routes
-app.use("/api/rallies", rallyRoutes);
-app.use("/api/rallies", decisionRoutes);
+app.use("/api/rally/rallies", rallyRoutes);
+app.use("/api/rally/decisions", decisionRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/rallies", inviteRoutes);
+app.use("/api/rally/invitations", inviteRoutes);
+app.use("/api/rally/tasks", taskRoutes);
+app.use("/api/rally/chat", messageRoutes);
 
 
 app.get("/test", (_req, res) => {

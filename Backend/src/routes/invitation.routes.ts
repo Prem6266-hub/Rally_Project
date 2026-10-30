@@ -6,7 +6,7 @@ const inviteRouter = Router();
 
 //invite a already registered user
 inviteRouter.post(
-    "/rallies/:id/invitations",
+    "/:id/invitations",
     authenticateToken,
     async (req, res) => {
         const userId = res.locals.userId;
@@ -275,7 +275,7 @@ inviteRouter.patch(
 
 //rally owner to view all invitation send for particular rally
 inviteRouter.get(
-    "/rallies/:id/invitations",
+    "rallies/:id/invitations",
     authenticateToken,
     async (req, res) => {
         const userId = res.locals.userId;

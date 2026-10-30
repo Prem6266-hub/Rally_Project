@@ -138,7 +138,7 @@ if (membership.rows.length === 0) {
 });
 
 //voting
-decisionRouter.post("/decisions/:id/vote",authenticateToken, async (req, res) => {
+decisionRouter.post("/:id/vote",authenticateToken, async (req, res) => {
   const userId = res.locals.userId;
   const decisionId = req.params.id;
   const {vote} = req.body;
@@ -235,7 +235,7 @@ decisionRouter.post("/decisions/:id/vote",authenticateToken, async (req, res) =>
 });
 
 //closing a decision, even after closing members can see their result, but can't add or change vote
-decisionRouter.patch("/decisions/:id/close", authenticateToken, async (req, res) => {
+decisionRouter.patch("/:id/close", authenticateToken, async (req, res) => {
   const userId = res.locals.userId;
   const decisionId = req.params.id;
 
