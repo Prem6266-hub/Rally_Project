@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { pool } from "../db/pool.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
+import { io, removeRallyRoom } from "../socket.js";
+import { removeUserFromRally } from "../socket.js";
 
 const rallyRouter = Router();
 
@@ -617,7 +619,7 @@ rallyRouter.patch("/:id", authenticateToken, async (req, res) => {
 // })
 rallyRouter.delete("/:id", authenticateToken, async (req, res) => {
   const userId = res.locals.userId;
-  const rallyId = req.params.id;
+  const rallyId = String(req.params.id);
 
   const client = await pool.connect();
 
@@ -669,6 +671,8 @@ rallyRouter.delete("/:id", authenticateToken, async (req, res) => {
 
     await client.query("COMMIT");
 
+    removeRallyRoom(rallyId);
+
     return res.status(200).json({
       status: "success",
       message: "Rally deleted successfully",
@@ -691,6 +695,127 @@ rallyRouter.delete("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+//rally member removal
+rallyRouter.delete("/:id/members/:memberId/remove", authenticateToken, async(req,res) => {
+  const ownerId = res.locals.userId;
+        const rallyId = String(req.params.id);
+        const memberId = String(req.params.memberId);
+
+        if (ownerId === memberId) {
+            return res.status(400).json({
+                status: "error",
+                message: "You cannot remove yourself as the owner",
+            });
+        }
+
+        const client = await pool.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            const ownerResult = await client.query(
+                `SELECT 1
+                 FROM rally_members
+                 WHERE rally_id = $1
+                   AND user_id = $2
+                   AND role = 'OWNER'
+                 FOR UPDATE`,
+                [rallyId, ownerId]
+            );
+
+            if (ownerResult.rows.length === 0) {
+                await client.query("ROLLBACK");
+
+                return res.status(403).json({
+                    status: "error",
+                    message: "Only the Rally owner can remove members",
+                });
+            }
+
+            const deleteResult = await client.query(
+                `DELETE FROM rally_members
+                 WHERE rally_id = $1
+                   AND user_id = $2
+                   AND role = 'MEMBER'
+                 RETURNING user_id`,
+                [rallyId, memberId]
+            );
+
+            if (deleteResult.rows.length === 0) {
+                await client.query("ROLLBACK");
+
+                return res.status(404).json({
+                    status: "error",
+                    message: "Member not found",
+                });
+            }
+
+            await client.query("COMMIT");
+
+            removeUserFromRally(rallyId, memberId);
+
+            return res.status(200).json({
+                status: "success",
+                message: "Member removed successfully",
+            });
+
+        } catch (error) {
+            await client.query("ROLLBACK").catch(() => {});
+
+            console.error("Remove member error:", error);
+
+            return res.status(500).json({
+                status: "error",
+                message: "Failed to remove member",
+            });
+        } finally {
+            client.release();
+        }
+})
+
+
+//member can leave rally voluntarily
+rallyRouter.delete(
+    "/:id/member/leave",
+    authenticateToken,
+    async (req, res) => {
+        const userId = res.locals.userId;
+        const rallyId = String(req.params.id);
+
+        try {
+            const result = await pool.query(
+                `DELETE FROM rally_members
+                 WHERE rally_id = $1
+                   AND user_id = $2
+                   AND role = 'MEMBER'
+                 RETURNING user_id`,
+                [rallyId, userId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(400).json({
+                    status: "error",
+                    message: "You cannot leave this Rally or are not a member",
+                });
+            }
+
+            removeUserFromRally(rallyId, userId);
+
+            return res.status(200).json({
+                status: "success",
+                message: "You left the Rally successfully",
+            });
+
+        } catch (error) {
+            console.error("Leave Rally error:", error);
+
+            return res.status(500).json({
+                status: "error",
+                message: "Failed to leave Rally",
+            });
+        }
+    }
+);
 
 
 

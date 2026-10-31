@@ -2,6 +2,7 @@ import { Router } from "express";
 import {pool} from "../db/pool.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 // import { ClientRequest } from "node:http";
+import { io } from "../socket.js";
 
 const taskRouter = Router();
 
@@ -111,6 +112,19 @@ taskRouter.post(
             );
 
             await client.query("COMMIT");
+
+            const newTask = taskResult.rows[0];
+
+
+            io.to(`rally:${rallyId}`).emit("new-task", newTask);
+
+// Notify only the assigned user.
+if (newTask.assigned_to) {
+    io.to(`user:${newTask.assigned_to}`).emit(
+        "task-assigned",
+        newTask
+    );
+}
 
             return res.status(201).json({
                 status: "success",
@@ -449,6 +463,17 @@ taskRouter.patch("/:id/update", authenticateToken, async (req, res) => {
         );
 
         await client.query("COMMIT");
+
+        const previousAssignedTo = taskResult.rows[0].assigned_to;
+        const updateTask = updateResult.rows[0];
+        if(updateTask.assigned_to &&
+            updateTask.assigned_to !== previousAssignedTo
+        ){
+            io.to(`user:${updateTask.assigned_to}`).emit(
+        "task-assigned",
+        updateTask
+    );
+        }
 
         return res.status(200).json({
             status: "success",

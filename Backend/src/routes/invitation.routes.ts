@@ -1,6 +1,7 @@
 import {Router} from "express";
 import {pool} from "../db/pool.js";
 import {authenticateToken} from "../middleware/auth.middleware.js";
+import { io } from "../socket.js";
 
 const inviteRouter = Router();
 
@@ -108,6 +109,12 @@ inviteRouter.post(
             );
 
             await client.query("COMMIT");
+
+            const newInvitation = invitationResult.rows[0];
+            io.to(`user:${newInvitation.invitee_user_id}`).emit(
+    "invitation-received",
+    newInvitation
+);
 
             return res.status(201).json({
                 status: "success",
@@ -249,6 +256,14 @@ inviteRouter.patch(
             );
 
             await client.query("COMMIT");
+
+            if(action === "ACCEPT"){
+                io.to(`rally:${invitation.rally_id}`).emit("member-joined", {
+        rallyId: invitation.rally_id,
+        userId,
+    });
+            }
+
 
             return res.status(200).json({
                 status: "success",

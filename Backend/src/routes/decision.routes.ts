@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db/pool.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
+import { io } from "../socket.js";
 
 const decisionRouter = Router();
 
@@ -54,6 +55,11 @@ decisionRouter.post("/:id/decisions", authenticateToken, async (req, res) => {
        RETURNING *`,
       [rallyId, title.trim(), description?.trim() || null, userId],
     );
+
+    io.to(`rally:${rallyId}`).emit(
+    "new-decision",
+    result.rows[0]
+);
 
     return res.status(201).json({
       status: "success",
