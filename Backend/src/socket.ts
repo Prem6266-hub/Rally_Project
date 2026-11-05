@@ -1,7 +1,8 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
-import { parse } from "cookie";
+// import { parse } from "cookie";
+import * as cookie from "cookie";
 import { pool } from "./db/pool.js";
 import {validate as isValidUUID} from "uuid";
 
@@ -24,7 +25,8 @@ export function initializeSocket(httpServer: HttpServer) {
                 return next(new Error("Authentication required"));
             }
 
-            const cookies = parse(cookieHeader);
+            // const cookies = parse(cookieHeader);
+            const cookies = cookie.parseCookie(cookieHeader);
             const token = cookies.rally_token;
 
             if (!token) {

@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import inviteRoutes from "./routes/invitation.routes.js";
 import taskRoutes from "./routes/task.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/rally/invitations", inviteRoutes);
 app.use("/api/rally/tasks", taskRoutes);
 app.use("/api/rally/chat", messageRoutes);
+app.use("/api/ai", aiRoutes);
 
 
 app.get("/test", (_req, res) => {
