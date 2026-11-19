@@ -8,93 +8,93 @@ interface CreateTaskArgs {
     dueDate?: string | undefined;
 }
 
-export const createTaskFromAI = async (
-    args: CreateTaskArgs,
-    rallyId: string,
-    userId: string
-) => {
-    const client = await pool.connect();
+// export const createTaskFromAI = async (
+//     args: CreateTaskArgs,
+//     rallyId: string,
+//     userId: string
+// ) => {
+//     const client = await pool.connect();
 
-    try {
-        await client.query("BEGIN");
+//     try {
+//         await client.query("BEGIN");
 
-        // Verify that the requesting user belongs to the Rally
-        const memberResult = await client.query(
-            `SELECT 1
-             FROM rally_members
-             WHERE rally_id = $1
-             AND user_id = $2`,
-            [rallyId, userId]
-        );
+//         // Verify that the requesting user belongs to the Rally
+//         const memberResult = await client.query(
+//             `SELECT 1
+//              FROM rally_members
+//              WHERE rally_id = $1
+//              AND user_id = $2`,
+//             [rallyId, userId]
+//         );
 
-        if (memberResult.rows.length === 0) {
-            throw new Error("User is not a member of this Rally");
-        }
+//         if (memberResult.rows.length === 0) {
+//             throw new Error("User is not a member of this Rally");
+//         }
 
-        // Verify that the assigned user belongs to the Rally
-        if (args.assignedTo) {
-            const assigneeResult = await client.query(
-                `SELECT 1
-                 FROM rally_members
-                 WHERE rally_id = $1
-                 AND user_id = $2`,
-                [rallyId, args.assignedTo]
-            );
+//         // Verify that the assigned user belongs to the Rally
+//         if (args.assignedTo) {
+//             const assigneeResult = await client.query(
+//                 `SELECT 1
+//                  FROM rally_members
+//                  WHERE rally_id = $1
+//                  AND user_id = $2`,
+//                 [rallyId, args.assignedTo]
+//             );
 
-            if (assigneeResult.rows.length === 0) {
-                throw new Error("Assigned user is not a Rally member");
-            }
-        }
+//             if (assigneeResult.rows.length === 0) {
+//                 throw new Error("Assigned user is not a Rally member");
+//             }
+//         }
 
-        // Create task
-        const taskResult = await client.query(
-            `INSERT INTO tasks (
-                rally_id,
-                title,
-                description,
-                assigned_to,
-                created_by,
-                due_date
-            )
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *`,
-            [
-                rallyId,
-                args.title,
-                args.description ?? null,
-                args.assignedTo ?? null,
-                userId,
-                args.dueDate ?? null
-            ]
-        );
+//         // Create task
+//         const taskResult = await client.query(
+//             `INSERT INTO tasks (
+//                 rally_id,
+//                 title,
+//                 description,
+//                 assigned_to,
+//                 created_by,
+//                 due_date
+//             )
+//             VALUES ($1, $2, $3, $4, $5, $6)
+//             RETURNING *`,
+//             [
+//                 rallyId,
+//                 args.title,
+//                 args.description ?? null,
+//                 args.assignedTo ?? null,
+//                 userId,
+//                 args.dueDate ?? null
+//             ]
+//         );
 
-        await client.query("COMMIT");
+//         await client.query("COMMIT");
 
-        const newTask = taskResult.rows[0];
+//         const newTask = taskResult.rows[0];
 
-         io.to(`rally:${rallyId}`).emit("new-task", newTask);
+//          io.to(`rally:${rallyId}`).emit("new-task", newTask);
 
-// Notify only the assigned user.
-if (newTask.assigned_to) {
-    io.to(`user:${newTask.assigned_to}`).emit(
-        "task-assigned",
-        newTask
-    );
-}
+// // Notify only the assigned user.
+// if (newTask.assigned_to) {
+//     io.to(`user:${newTask.assigned_to}`).emit(
+//         "task-assigned",
+//         newTask
+//     );
+// }
 
-        return {
-            success: true,
-            task: taskResult.rows[0]
-        };
+//         return {
+//             success: true,
+//             task: taskResult.rows[0]
+//         };
 
-    } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
+//     } catch (error) {
+//         await client.query("ROLLBACK");
+//         throw error;
 
-    } finally {
-        client.release();
-    }
-};
+//     } finally {
+//         client.release();
+//     }
+// };
 
 
 
@@ -279,8 +279,6 @@ type PendingActionDecision = "CONFIRM" | "REJECT";
 //     client.release();
 //   }
 // };
-
-
 export const resolvePendingTaskAction = async (
   actionId: string,
   rallyId: string,
@@ -400,6 +398,18 @@ export const resolvePendingTaskAction = async (
 
     // 9. Commit transaction
     await client.query("COMMIT");
+
+    const newTask = taskResult.rows[0];
+
+                io.to(`rally:${rallyId}`).emit("new-task", newTask);
+
+// Notify only the assigned user.
+if (newTask.assigned_to) {
+    io.to(`user:${newTask.assigned_to}`).emit(
+        "task-assigned",
+        newTask
+    );
+}
 
     return {
       success: true,

@@ -1,5 +1,5 @@
 import type { Request,Response} from "express";
-import { aiRes } from "../services/ai.service.js";
+import { aiRes, generateRallyInsights, analyzeRallyConversation } from "../services/ai.service.js";
 import { resolvePendingTaskAction } from "../services/ai.tools.service.js";
 
 export const chatWithAi = async(req: Request, res: Response) => {
@@ -96,3 +96,78 @@ export const resolveAIAction = async (
     });
   }
 };
+
+export const getRallyInsights = async(req: Request, res: Response) => {
+  try {
+    const{rallyId} = req.params;
+    const userId = res.locals.userId;
+
+    if(!rallyId || typeof rallyId !== "string"){
+      return res.status(400).json({
+        status: "error",
+        message: "Rally ID is required",
+      });
+    }
+
+    const result = await generateRallyInsights(
+      rallyId, userId
+    );
+
+    return res.status(200).json({
+      status: "success",
+      data: result,
+    });
+
+  } catch (err) {
+    console.error("Rally Insights Error:", err);
+
+    return res.status(500).json({
+      status: "error",
+      message:
+        err instanceof Error
+          ? err.message
+          : "Failed to generate Rally insights",
+    });
+  }
+}
+
+export const analyzeConversation = async(req: Request, res: Response) => {
+  try {
+    const {rallyId} = req.params;
+    const userId = res.locals.userId;
+    const {question} = req.body;
+
+    if(!rallyId || typeof rallyId !== "string"){
+      return res.status(400).json({
+        status: "error",
+        message: "Rally ID is required",
+      });
+    }
+
+    if (
+  question !== undefined &&
+  (typeof question !== "string" ||
+    !question.trim() ||
+    question.length > 1000)
+) {
+  return res.status(400).json({
+    status: "error",
+    message: "Question must be between 1 and 1000 characters",
+  });
+}
+
+    const result = await analyzeRallyConversation(rallyId, userId, question);
+
+    return res.status(200).json({
+      status: "success",
+      data: result
+    });
+  } catch (err) {
+    console.error("Conversation Analysis Error: ", err);
+
+    return res.status(500).json({
+      status: "error",
+      message: err instanceof Error ? err.message : "Failed to analyze conversation",
+    });
+  }
+}

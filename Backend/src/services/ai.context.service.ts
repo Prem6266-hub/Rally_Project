@@ -5,7 +5,7 @@ export const getRallyContext = async (rallyId: string, userId: string) => {
 
   try {
     const rallyResult = await client.query(
-    `SELECT
+      `SELECT
         r.id,
         r.title,
         r.description,
@@ -17,18 +17,17 @@ export const getRallyContext = async (rallyId: string, userId: string) => {
         ON rm.rally_id = r.id
      WHERE r.id = $1
        AND rm.user_id = $2`,
-    [rallyId, userId]
-);
+      [rallyId, userId],
+    );
 
-if (rallyResult.rows.length === 0) {
-    throw new Error("Rally not found or access denied");
-}
+    if (rallyResult.rows.length === 0) {
+      throw new Error("Rally not found or access denied");
+    }
 
-const rally = rallyResult.rows[0];
-
+    const rally = rallyResult.rows[0];
 
     const membersResult = await client.query(
-    `SELECT
+      `SELECT
         u.id,
         u.name,
         rm.role,
@@ -38,13 +37,13 @@ const rally = rallyResult.rows[0];
         ON u.id = rm.user_id
      WHERE rm.rally_id = $1
      ORDER BY rm.joined_at ASC`,
-    [rallyId]
-);
+      [rallyId],
+    );
 
-const members = membersResult.rows;
+    const members = membersResult.rows;
 
-const tasksResult = await client.query(
-    `SELECT
+    const tasksResult = await client.query(
+      `SELECT
         t.id,
         t.title,
         t.description,
@@ -61,13 +60,13 @@ const tasksResult = await client.query(
         ON creator.id = t.created_by
      WHERE t.rally_id = $1
      ORDER BY t.created_at DESC`,
-    [rallyId]
-);
+      [rallyId],
+    );
 
-const tasks = tasksResult.rows;
+    const tasks = tasksResult.rows;
 
-const decisionsResult = await client.query(
-    `SELECT
+    const decisionsResult = await client.query(
+      `SELECT
         d.id,
         d.title,
         d.description,
@@ -103,13 +102,13 @@ const decisionsResult = await client.query(
      GROUP BY d.id, creator.name
 
      ORDER BY d.created_at DESC`,
-    [rallyId]
-);
+      [rallyId],
+    );
 
-const decisions = decisionsResult.rows;
+    const decisions = decisionsResult.rows;
 
-const messagesResult = await client.query(
-    `SELECT
+    const messagesResult = await client.query(
+      `SELECT
         m.id,
         m.content,
         m.created_at,
@@ -125,26 +124,22 @@ const messagesResult = await client.query(
      ORDER BY m.created_at DESC
 
      LIMIT 30`,
-    [rallyId]
-);
+      [rallyId],
+    );
 
-if(messagesResult.rows.length === 0){
-    throw new Error("No messages found");
-}
+    if (messagesResult.rows.length === 0) {
+      throw new Error("No messages found");
+    }
 
-const messages = messagesResult.rows.reverse();
+    const messages = messagesResult.rows.reverse();
 
-
-
-return {
-    rally,
-    members,
-    tasks,
-    decisions,
-    messages,
-};
-
-
+    return {
+      rally,
+      members,
+      tasks,
+      decisions,
+      messages,
+    };
   } finally {
     client.release();
   }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { pool } from "../db/pool.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 import { io } from "../socket.js";
+import { storeMessageEmbedding } from "../services/message-memory.service.js";
 
 const messageRouter = Router();
 
@@ -10,6 +11,13 @@ messageRouter.post("/:id/post/message", authenticateToken, async (req, res) => {
   const userId = res.locals.userId;
   const rallyId = req.params.id;
   const { content } = req.body;
+
+  if(!rallyId || typeof rallyId !== "string" || !rallyId.trim()){
+    return res.status(400).json({
+      status: "error",
+      message: "Rally ID is required",
+    });
+  }
 
   if (typeof content !== "string" || !content.trim()) {
     return res.status(400).json({
@@ -49,6 +57,15 @@ messageRouter.post("/:id/post/message", authenticateToken, async (req, res) => {
                            created_at, updated_at`,
       [rallyId, userId, content.trim()],
     );
+
+    // Generate and store embedding without blocking message delivery.
+await storeMessageEmbedding(
+  result.rows[0].id,
+  rallyId,
+  result.rows[0].content
+).catch((error) => {
+  console.error("Message embedding failed:", error);
+});
 
     io.to(`rally:${rallyId}`).emit("new-message", result.rows[0]);
 
